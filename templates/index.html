@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MARTCHAT</title>
+    <!-- Favicon -->
+    <link rel="icon" href="/static/images/image.png" type="image/x-icon">
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+        .chat-container {
+            max-width: 700px;
+            margin: auto;
+            margin-top: 50px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+        }
+        .user-message {
+            background-color: #d2ca9b;
+            color: #fff;
+            justify-content: flex-end;
+            text-align: right;
+        }
+        .bot-message {
+            background-color: #a67fb4;
+            color: #fff;
+            justify-content: flex-start;
+            text-align: left;
+        }
+        .icon {
+            margin: 0 10px;
+        }
+        .text {
+            flex-grow: 1;
+        }
+        .gap {
+            width: 10px;
+        }
+        .btn-download {
+            display: none;
+            background-color: #d29ba7;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+        }
+        .btn-download:hover {
+            background-color: #da7483;
+        }
+        .btn-primary {
+            border-radius: 5px;
+            background-color: #4d60df;
+        }
+
+        .btn-success {
+            border-radius: 5px;
+            background-color: #61c288;
+        }
+
+        .summary {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+        }
+        #chat-messages {
+            height: 300px;
+            overflow-y: scroll;
+            margin-bottom: 20px;
+        }
+        .input-group-append {
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="chat-container">
+            <img src="/static/images/image.png" alt="Title Image" style="display: block; margin: auto; width: 50px; height: auto;">
+            <h2 class="text-center">MartChat Supermarket Chatbot</h2>
+            <div id="chat-messages"></div>
+            <div class="input-group mb-3">
+                <input type="text" class="form-control" id="user-input" placeholder="Enter your message..." aria-label="Enter your message..." aria-describedby="send-button">
+                <div class="input-group-append">
+                    <button class="btn btn-primary" type="button" id="send-button" onclick="sendMessage()"><i class="fas fa-paper-plane"></i> Send</button>
+                </div>
+                <div class="input-group-append">
+                    <button class="btn btn-success" type="button" id="new-chat" onclick="newChat()"><i class="fas fa-plus"></i> New Chat</button>
+                </div>
+            </div>
+            <div id="summary" class="summary">
+                <h5>Shopping List</h5>
+                <ul id="summary-list"></ul>
+                <a id="download-link" class="btn btn-download" href="#" download="shopping_list.pdf"><i class="fas fa-download"></i> Download Shopping List</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and jQuery -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <script>
+        function sendMessage() {
+            var message = document.getElementById("user-input").value.trim();
+            if (message !== "") {
+                displayMessage(message, "user");
+                document.getElementById("user-input").value = "";
+                fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    displayMessage(data.response, "bot");
+                    if (data.pdf_path) {
+                        document.getElementById("download-link").setAttribute("href", data.pdf_path);
+                        document.getElementById("download-link").style.display = 'inline-block';
+                    }
+                    if (data.summary) {
+                        updateSummary(data.summary);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+        }
+
+        function displayMessage(message, sender) {
+            var chatMessages = document.getElementById("chat-messages");
+            var messageElement = document.createElement("div");
+            messageElement.classList.add("message");
+
+            var icon = document.createElement("i");
+            icon.classList.add("fas");
+            icon.classList.add(sender === "bot" ? "fa-robot" : "fa-user");
+            icon.classList.add("icon");
+
+            var text = document.createElement("span");
+            text.classList.add("text");
+            text.innerHTML = message;
+
+            var gap = document.createElement("span");
+            gap.classList.add("gap"); 
+
+            if (sender === "bot") {
+                messageElement.classList.add("bot-message");
+                messageElement.appendChild(icon);
+                messageElement.appendChild(gap);
+                messageElement.appendChild(text);
+            } else {
+                messageElement.classList.add("user-message");
+                messageElement.appendChild(text);
+                messageElement.appendChild(gap);
+                messageElement.appendChild(icon);
+            }
+
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll to bottom
+        }
+
+        function updateSummary(summary) {
+            var summaryList = document.getElementById("summary-list");
+            summaryList.innerHTML = "";
+            for (var item in summary) {
+                var listItem = document.createElement("li");
+                listItem.textContent = `${item}: ${summary[item]}`;
+                summaryList.appendChild(listItem);
+            }
+        }
+
+        function newChat() {
+            document.getElementById("chat-messages").innerHTML = "";
+            document.getElementById("summary-list").innerHTML = "";
+            document.getElementById("download-link").style.display = 'none';
+        }
+
+        // Send message on pressing Enter key
+        document.getElementById("user-input").addEventListener("keyup", function(event) {
+            if (event.keyCode === 13) {
+                event.preventDefault();
+                document.getElementById("send-button").click();
+            }
+        });
+    </script>
+</body>
+</html>
